@@ -105,3 +105,9 @@ dist
 
 # IntelliJ
 .idea
+
+# Build
+build/
+
+# npm
+package-lock.json

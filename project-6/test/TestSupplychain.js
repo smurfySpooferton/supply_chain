@@ -14,7 +14,7 @@ contract('SupplyChain', function(accounts) {
     const originFarmLongitude = "144.341490"
     var productID = sku + upc
     const productNotes = "Best beans for Espresso"
-    const productPrice = web3.toWei(1, "ether")
+    //const productPrice = web3.toWei(1, "ether")
     var itemState = 0
     const distributorID = accounts[2]
     const retailerID = accounts[3]
@@ -76,21 +76,39 @@ contract('SupplyChain', function(accounts) {
 
     // 2nd Test
     it("Testing smart contract function processItem() that allows a farmer to process coffee", async() => {
-        const supplyChain = await SupplyChain.deployed()
-        
-        // Declare and Initialize a variable for event
-        
-        
-        // Watch the emitted event Processed()
-        
+        const supplyChain = await SupplyChain.deployed();
 
+        // Declare and Initialize a variable for event
+        let event = supplyChain.Processed();
+        let eventEmitted = false;
+        // Watch the emitted event Processed()
+        await event.watch((err, res) => {
+            eventEmitted = true;
+        });
+        await supplyChain.processItem(upc);
+        assert.equal(eventEmitted, true);
         // Mark an item as Processed by calling function processtItem()
-        
+        supplyChain.processItem(event);
 
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
-        
+        const resultBufferOne = await supplyChain.fetchItemBufferOne.call(upc);
+        const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc);
 
         // Verify the result set
+
+
+
+        // Read the result from blockchain
+        let res1 = await instance.fetchGrapeItemBufferOne.call(upc);
+        let res2 = await instance.fetchGrapeItemBufferTwo.call(upc);
+        // console.log(res1, 'result buffer 1');
+        // console.log(res2, 'result buffer 2');
+
+        assert.equal(res1.upc, upc, 'Error: Invalid item UPC');
+        assert.equal(res1.ownerID, ownerID, 'Error: Missing or Invalid ownerID');
+        assert.equal(res1.originFarmerID, originFarmerID, 'Error: Missing or Invalid originFarmerID');
+        assert.equal(res2.itemState, itemState, 'Error: Invalid item State');
+        truffleAssert.eventEmitted(processed, 'GrapeProcessed');
         
     })    
 

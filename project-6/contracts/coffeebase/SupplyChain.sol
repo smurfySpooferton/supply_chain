@@ -72,6 +72,11 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         _;
     }
 
+    modifier onlyItemOwner(uint _upc) {
+        require(msg.sender == items[_upc].ownerID);
+        _;
+    }
+
     // Define a modifer that verifies the Caller
     modifier verifyCaller (address _address) {
         require(msg.sender == _address);
@@ -162,7 +167,7 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         // Add the new item as part of Harvest
         items[_upc].sku = sku;
         items[_upc].upc = _upc;
-        items[_upc].ownerID = _originFarmerID;
+        items[_upc].ownerID = msg.sender;
         items[_upc].originFarmerID = _originFarmerID;
         items[_upc].originFarmName = _originFarmName;
         items[_upc].originFarmInformation = _originFarmInformation;
@@ -171,7 +176,6 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         items[_upc].productNotes = _productNotes;
         // Update state
         items[_upc].itemState = State.Harvested;
-
         // Increment sku
         sku = sku + 1;
 
@@ -187,7 +191,7 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
 
     {
         // Update the appropriate fields
-        items[_upc].productID = stringToUint(appendUintToString(appendUintToString("", sku), _upc));
+        items[_upc].productID = sku + upc;
         items[_upc].itemState = State.Processed;
         // Emit the appropriate event
         emit Processed(_upc);
@@ -207,7 +211,7 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
     }
 
     // Define a function 'sellItem' that allows a farmer to mark an item 'ForSale'
-    function sellItem(uint _upc, uint _price) public onlyOwner packed(_upc)
+    function sellItem(uint _upc, uint _price) public onlyItemOwner(_upc) packed(_upc)
         // Call modifier to check if upc has passed previous supply chain stage
 
         // Call modifier to verify caller of this function
@@ -235,7 +239,7 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         // Update the appropriate fields - ownerID, distributorID, itemState
         items[_upc].ownerID = msg.sender;
         items[_upc].distributorID = msg.sender;
-        items[_upc].itemState = State.ForSale;
+        items[_upc].itemState = State.Sold;
         // Transfer money to farmer
         uint256 price = items[_upc].productPrice;
         vendor.transfer(price);
@@ -265,20 +269,22 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         // Access Control List enforced by calling Smart Contract / DApp
     {
         // Update the appropriate fields - ownerID, retailerID, itemState
-        items[_upc].itemState = State.Shipped;
+        items[_upc].itemState = State.Received;
+        items[_upc].retailerID = msg.sender;
         // Emit the appropriate event
         emit Received(_upc);
     }
 
     // Define a function 'purchaseItem' that allows the consumer to mark an item 'Purchased'
     // Use the above modifiers to check if the item is received
-    function purchaseItem(uint _upc) public onlyConsumer shipped(_upc)
+    function purchaseItem(uint _upc) public onlyConsumer received(_upc)
         // Call modifier to check if upc has passed previous supply chain stage
 
         // Access Control List enforced by calling Smart Contract / DApp
     {
         // Update the appropriate fields - ownerID, consumerID, itemState
         items[_upc].itemState = State.Purchased;
+        items[_upc].consumerID = msg.sender;
         // Emit the appropriate event
         emit Purchased(_upc);
     }
@@ -357,40 +363,5 @@ contract SupplyChain is Ownable, FarmerRole, DistributorRole, RetailerRole, Cons
         retailerID,
         consumerID
         );
-    }
-
-    // Taken from https://ethereum.stackexchange.com/a/10934
-    function appendUintToString(string inStr, uint v) constant returns (string str) {
-        uint maxlength = 100;
-        bytes memory reversed = new bytes(maxlength);
-        uint i = 0;
-        while (v != 0) {
-            uint remainder = v % 10;
-            v = v / 10;
-            reversed[i++] = byte(48 + remainder);
-        }
-        bytes memory inStrb = bytes(inStr);
-        bytes memory s = new bytes(inStrb.length + i + 1);
-        uint j;
-        for (j = 0; j < inStrb.length; j++) {
-            s[j] = inStrb[j];
-        }
-        for (j = 0; j <= i; j++) {
-            s[j + inStrb.length] = reversed[i - j];
-        }
-        str = string(s);
-    }
-
-    // Taken from https://ethereum.stackexchange.com/a/10934
-    function stringToUint(string s) constant returns (uint result) {
-        bytes memory b = bytes(s);
-        uint i;
-        result = 0;
-        for (i = 0; i < b.length; i++) {
-            uint c = uint(b[i]);
-            if (c >= 48 && c <= 57) {
-                result = result * 10 + (c - 48);
-            }
-        }
     }
 }

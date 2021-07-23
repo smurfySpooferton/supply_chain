@@ -111,3 +111,7 @@ build/
 
 # npm
 package-lock.json
+
+# secrets
+project-6/infura
+project-6/mnemonic
